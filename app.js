@@ -5,7 +5,7 @@ const app = express();
 app.use(bodyParser.json());
 
 
-const snippets = require('./seedData.json'); // Load initial data from seedData.json
+const snippets = require('./seedData.json'); 
 
 
 app.post('/snippet', (req, res) => {
