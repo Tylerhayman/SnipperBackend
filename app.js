@@ -15,9 +15,10 @@ app.post('/snippet', (req, res) => {
 });
 
 
-app.get('/snippet', (req, res) => {
+app.get('/snippet', (_, res) => {
   res.json(snippets);
 });
+
 
 
 app.get('/snippet/:id', (req, res) => {
