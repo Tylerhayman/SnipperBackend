@@ -1,9 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
-const snippets = [];
 
 app.use(bodyParser.json());
+
+
+const snippets = require('./seedData.json'); // Load initial data from seedData.json
+
 
 app.post('/snippet', (req, res) => {
   const snippet = req.body;
@@ -26,6 +29,7 @@ app.get('/snippet/:id', (req, res) => {
     res.status(404).json({ error: 'Snippet not found' });
   }
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
