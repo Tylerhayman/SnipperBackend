@@ -15,7 +15,11 @@ app.post('/snippet', (req, res) => {
 });
 
 
-app.get('/snippet', (_, res) => {
+app.get('/snippet', (req, res) => {
+  console.log(req.query); // Log the query parameters
+  const lang = req.query.lang;
+  console.log(lang); // Log the 'lang' parameter
+  // Use the lang parameter to filter snippets or perform other actions
   res.json(snippets);
 });
 
