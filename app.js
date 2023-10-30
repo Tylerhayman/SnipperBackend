@@ -1,9 +1,12 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const app = express();
 
-const SECRET_KEY = 'secret';
+// Generate a secure secret key (64 bytes, 128 characters)
+const secretKey = crypto.randomBytes(64).toString('hex');
+
 const users = [];
 
 app.use(express.json());
@@ -11,8 +14,26 @@ app.use(express.json());
 // snippets store
 const snippets = [];
 
+// Middleware to verify JWT token
+function verifyToken(req, res, next) {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. Token is missing.' });
+  }
+
+  jwt.verify(token, secretKey, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: 'Access denied. Invalid token.' });
+    }
+
+    req.user = decoded;
+    next();
+  });
+}
+
 // create a new snippet
-app.post('/snippet', (req, res) => {
+app.post('/snippet', verifyToken, (req, res) => {
   const snippet = req.body;
   const encryptedCode = encrypt(snippet.code);
 
@@ -21,7 +42,7 @@ app.post('/snippet', (req, res) => {
 });
 
 // retrieve snippets
-app.get('/snippet', (req, res) => {
+app.get('/snippet', verifyToken, (req, res) => {
   const decryptedSnippets = snippets.map(snippet => ({
     ...snippet,
     code: decrypt(snippet.code),
@@ -29,8 +50,8 @@ app.get('/snippet', (req, res) => {
   res.json(decryptedSnippets);
 });
 
-// retrieve snippet ID
-app.get('/snippet/:id', (req, res) => {
+// retrieve snippet by ID
+app.get('/snippet/:id', verifyToken, (req, res) => {
   const id = req.params.id;
   const snippet = snippets.find((s) => s.id === id);
 
@@ -57,7 +78,7 @@ app.post('/user', (req, res) => {
   });
 });
 
-// authenticate a user
+// Authenticate a user and return a JWT token
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
   const user = users.find((u) => u.email === email);
@@ -67,7 +88,8 @@ app.post('/login', (req, res) => {
   } else {
     bcrypt.compare(password, user.password, (err, result) => {
       if (result) {
-        res.json({ email });
+        const token = jwt.sign({ email: user.email }, secretKey, { expiresIn: '24h' });
+        res.json({ token });
       } else {
         res.status(401).json({ error: 'Authentication failed' });
       }
@@ -77,7 +99,7 @@ app.post('/login', (req, res) => {
 
 const encrypt = (data) => {
   const iv = crypto.randomBytes(16); // Generate a random vector
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(SECRET_KEY), iv);
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
   let encrypted = cipher.update(data, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return iv.toString('hex') + encrypted;
@@ -86,7 +108,7 @@ const encrypt = (data) => {
 const decrypt = (data) => {
   const iv = Buffer.from(data.slice(0, 32), 'hex'); // Extract data
   const encryptedData = data.slice(32);
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(SECRET_KEY), iv);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
   let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
